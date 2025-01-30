@@ -1,0 +1,32 @@
+openapi: 3.1.0
+info:
+  title: Notion Lore API
+  description: Diese API greift auf deine Notion-Datenbank zu und gibt deine gespeicherten Lore-Daten zurück.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /notion/lore:
+    get:
+      operationId: getNotionLore
+      summary: Ruft alle Lore-Daten aus deiner Notion-Datenbank ab.
+      responses:
+        "200":
+          description: Erfolgreiche Antwort mit einer Liste von Notion-Einträgen.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Die ID der Seite.
+                    title:
+                      type: string
+                      description: Der Titel der Notion-Seite.
+                    url:
+                      type: string
+                      format: uri
+                      description: Die URL zur Notion-Seite.
