@@ -1,14 +1,11 @@
 import express from "express";
 import fetch from "node-fetch";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-const NOTION_API_KEY = process.env.NOTION_API_KEY || "ntn_b586357446662yJo8uHyOrNH8dDPPMUu7QvqzJq0vHc1yV";
-const DATABASE_ID = process.env.DATABASE_ID || "18b15d7f0bc28009a7aaccce3b631437";
+const NOTION_API_KEY = process.env.NOTION_API_KEY || "DEIN_FALLBACK_KEY";
+const DATABASE_ID = process.env.DATABASE_ID || "DEINE_FALLBACK_DATABASE_ID";
 
 // 🔹 Funktion: Alle Notion-Einträge abrufen (inkl. Pagination)
 async function fetchAllNotionEntries() {
@@ -23,18 +20,20 @@ async function fetchAllNotionEntries() {
                 "Notion-Version": "2022-06-28",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                start_cursor: nextCursor // Falls mehr Seiten vorhanden sind
-            })
+            body: JSON.stringify(nextCursor ? { start_cursor: nextCursor } : {})
         });
 
         const data = await response.json();
+
+        if (!response.ok) {
+            return { error: `Notion API Fehler: ${data.message || "Unbekannter Fehler"}` };
+        }
 
         if (data.results) {
             allResults = [...allResults, ...data.results];
         }
 
-        nextCursor = data.next_cursor; // Falls es mehr Seiten gibt
+        nextCursor = data.next_cursor || null; // Sicherstellen, dass nextCursor entweder null oder ein Wert ist
     } while (nextCursor);
 
     return allResults.map(page => ({
@@ -48,7 +47,12 @@ async function fetchAllNotionEntries() {
 // 🔹 Endpunkt: Alle Einträge mit Limit abrufen
 app.get("/notion/lore", async (req, res) => {
     const results = await fetchAllNotionEntries();
-    const limit = req.query.limit ? parseInt(req.query.limit) : results.length; // Alle, falls kein Limit
+    
+    if (results.error) {
+        return res.status(500).json(results);
+    }
+
+    const limit = req.query.limit ? parseInt(req.query.limit) : results.length;
     res.json(results.slice(0, limit));
 });
 
@@ -56,6 +60,10 @@ app.get("/notion/lore", async (req, res) => {
 app.get("/notion/lore/:name", async (req, res) => {
     const name = req.params.name.toLowerCase();
     const results = await fetchAllNotionEntries();
+
+    if (results.error) {
+        return res.status(500).json(results);
+    }
 
     const foundEntry = results.find(entry => entry.name.toLowerCase() === name);
 
